@@ -1,72 +1,70 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
 
-const useBinanceWebSocket = (symbol, interval) => {
-  const [price, setPrice] = useState(null);
+const BACKEND_WS_URL = "http://localhost:5000/api/binance/klines/ws";
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_INTERVAL = 20000;
+
+export const useBinanceWebSocket = (onNewKline) => {
+  const wsRef = useRef(null);
+  const reconnectAttempts = useRef(0);
+  const { selectedTicker, interval } = useSelector((state) => state.ticker);
 
   useEffect(() => {
-    const ws = new WebSocket(
-      `wss://stream.binance.com:9443/ws/${symbol}@kline_${interval}`
-    );
+    const connectWebSocket = () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
 
-    ws.onopen = () => {
-      console.log(
-        `WebSocket з'єднання відкрите для ${symbol} на інтервалі ${interval}.`
+      const ws = new WebSocket(
+        `${BACKEND_WS_URL}?symbol=${selectedTicker}&interval=${interval}`
       );
+
+      ws.onopen = () => {
+        console.log("WebSocket connection established");
+        reconnectAttempts.current = 0;
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Received data:", data);
+          if (onNewKline && data.e === "kline") {
+            onNewKline(data);
+          }
+        } catch (error) {
+          console.error("Error parsing received data:", error);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+
+      ws.onclose = (event) => {
+        console.log("WebSocket connection closed:", event.code, event.reason);
+        if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
+          reconnectAttempts.current++;
+          console.log(
+            `Attempting to reconnect (${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS})...`
+          );
+          setTimeout(connectWebSocket, RECONNECT_INTERVAL);
+        } else {
+          console.log(
+            "Max reconnection attempts reached. Please check your connection and try again later."
+          );
+        }
+      };
+
+      wsRef.current = ws;
     };
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      const newPrice = data.k; // Поточна ціна закриття свічки
-
-      setPrice(newPrice);
-    };
-
-    ws.onerror = (error) => {
-      console.error("Помилка з WebSocket:", error);
-    };
-
-    ws.onclose = () => {
-      console.log(`З'єднання закрито для ${symbol}`);
-    };
+    connectWebSocket();
 
     return () => {
-      ws.close();
-    };
-  }, [symbol, interval]);
-
-  return price;
-};
-
-/* const useBinanceCandlestickData = (symbol, interval, limit = 10) => {
-  const [candlestickData, setCandlestickData] = useState([]);
-
-  useEffect(() => {
-    const fetchCandlestickData = async () => {
-      try {
-        const response = await fetch(
-          `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
-        );
-        const data = await response.json();
-
-        const formattedData = data.map((candle) => ({
-          openTime: candle[0],
-          open: parseFloat(candle[1]),
-          high: parseFloat(candle[2]),
-          low: parseFloat(candle[3]),
-          close: parseFloat(candle[4]),
-          closeTime: candle[6],
-        }));
-
-        setCandlestickData(formattedData);
-      } catch (error) {
-        console.error("Error fetching candlestick data:", error);
+      if (wsRef.current) {
+        wsRef.current.close();
       }
     };
-
-    fetchCandlestickData();
-  }, [symbol, interval, limit]);
-
-  return candlestickData;
-}; */
-
-export { useBinanceWebSocket };
+  }, [selectedTicker, interval, onNewKline]);
+};

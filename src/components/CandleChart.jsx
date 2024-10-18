@@ -1,48 +1,28 @@
 import React, { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useBinanceWebSocket } from "../hooks/useBinanceWebSocket"; // Підключення нашого хуку
-import { fetchKlines } from "../redux/actions/fetchKlinesActions";
+import {
+  fetchKlines,
+  fetchKlinesWS,
+} from "../redux/actions/fetchKlinesActions";
+import Chart from "./Chart";
+import ChartToolbar from "./ChartToolbar";
 
 const BinanceChart = () => {
-  const [priceData, setPriceData] = useState([]);
-  const [candlestick, setCandlestick] = useState([]);
   const dispatch = useDispatch();
-
-  // Використовуємо хук для підключення до WebSocket
-  const price = useBinanceWebSocket("btcusdt", "15m");
-  /*   const candlestickData = useBinanceCandlestickData("btcusdt", "15m"); */
-
-  useEffect(() => {
-    setPriceData(price);
-  }, [price]);
+  useBinanceWebSocket();
+  const { selectedTicker, interval } = useSelector((state) => state.ticker);
+  console.log(selectedTicker, interval);
 
   useEffect(() => {
-    dispatch(fetchKlines({ symbol: "BTCUSDT", interval: "15m" }));
+    dispatch(fetchKlines({ symbol: selectedTicker, interval: interval }));
   }, []);
 
   return (
     <div>
       <h1>Binance Candlestick Chart</h1>
-      {<p>Статус з'єднання: {price ? "Підключено" : "Не підключено"}</p>}
-      <button>Закрити з'єднання</button>
-      <div>
-        <button
-          onClick={() =>
-            dispatch(fetchKlines({ symbol: "BTCUSDT", interval: "15m" }))
-          }
-        >
-          Click
-        </button>
-        <div>
-          {priceData ? (
-            <p>
-              Ціна відкриття: ${priceData.o}, Поточна ціна: ${priceData.c}
-            </p>
-          ) : (
-            <p>waiting...</p>
-          )}
-        </div>
-      </div>
+      <ChartToolbar />
+      <Chart />
     </div>
   );
 };

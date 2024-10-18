@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
 const fetchKlines = createAsyncThunk(
@@ -10,10 +10,18 @@ const fetchKlines = createAsyncThunk(
         params: { symbol, interval },
       }
     );
-    console.log(response.data);
 
     return response.data; // Повертаємо дані
   }
 );
 
-export { fetchKlines };
+const addOrUpdateKline = createAsyncThunk(
+  "klines/addOrUpdate",
+  async (kline, {}) => {
+    // Тут ми просто повертаємо отриману свічку
+    // В реальному додатку тут може бути додаткова логіка або API-запит
+    return kline;
+  }
+);
+
+export { fetchKlines, addOrUpdateKline };
