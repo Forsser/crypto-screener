@@ -1,4 +1,4 @@
-import { fetchKlines } from "../services/binanceService.js";
+import { fetchKlines } from "../services/binanceServiceKlines.js";
 
 export const getKlinesController = async (req, res) => {
   try {

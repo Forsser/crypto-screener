@@ -1,5 +1,5 @@
 import express from "express";
-import { getKlinesController } from "../controllers/binanceController.js";
+import { getKlinesController } from "../controllers/binanceControllerKlines.js";
 
 const router = express.Router();
 
